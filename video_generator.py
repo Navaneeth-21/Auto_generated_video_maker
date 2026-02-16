@@ -1,3 +1,4 @@
+# video_generator.py
 from proglog import ProgressBarLogger
 
 import re
@@ -22,12 +23,12 @@ from moviepy.video.fx.all import fadein, fadeout
 
 # ================= CONFIG =================
 CONFIG = {
-    "resolution": (854, 480),  # can change to (1280, 720) if desired
-    "fps": 15,
+    "resolution": (1280, 720),  # change to 480p as (854, 480) for smaller file size
+    "fps": 20, 
     "font_size": 40,
-    "pip_size": (260, 260),
+    "pip_size": (320, 180), # make it small and rectangular for better aesthetics
     "pip_opacity": 1.0,
-    "font_path": r"D:\video_maker\fonts\NotoSansTelugu-Regular.ttf"
+    "font_path": r"D:\video_maker\fonts\NotoSansTelugu-Bold.ttf"
     # change to your desired font or full path
 }
 
@@ -60,7 +61,7 @@ def generate_video(
 
     shadow_clip = TextClip(
     text,
-    font="fonts/NotoSansTelugu-Regular.ttf",
+    font="fonts/NotoSansTelugu-Bold.ttf",
     fontsize=font_size,
     color=shadow_color,
     size=(text_width, None),
@@ -70,7 +71,7 @@ def generate_video(
 
     main_clip = TextClip(
     text,
-    font="fonts/NotoSansTelugu-Regular.ttf",
+    font="fonts/NotoSansTelugu-Bold.ttf",
     fontsize=font_size,
     color=main_color,
     size=(text_width, None),
@@ -122,10 +123,9 @@ def generate_video(
     # ================= PIP VIDEO =================
 
     has_pip = False
-    pip_audio = None
 
     try:
-        pip = VideoFileClip(pip_path)
+        pip = VideoFileClip(pip_path).without_audio()
 
         if pip.duration < duration:
             loops = int(duration / pip.duration) + 1
@@ -134,29 +134,11 @@ def generate_video(
 
         pip = pip.subclip(0, duration).resize(CONFIG["pip_size"])
 
-        # ---------- MAKE CIRCULAR MASK ----------
-        w, h = CONFIG["pip_size"]
-        radius = min(w, h) // 2
-
-        y, x = np.ogrid[:h, :w]
-        center_x, center_y = w // 2, h // 2
-        distance = (x - center_x) ** 2 + (y - center_y) ** 2
-
-        # IMPORTANT: float mask between 0 and 1
-        mask = np.zeros((h, w), dtype=float)
-        mask[distance <= radius ** 2] = 1.0
-
-        mask_clip = ImageClip(mask, ismask=True).set_duration(duration)
-
-        pip = pip.set_mask(mask_clip)
-        # -----------------------------------------
-
         pip_x = (CONFIG["resolution"][0] - CONFIG["pip_size"][0]) // 2
         pip_y = (CONFIG["resolution"][1] - CONFIG["pip_size"][1]) // 2
 
         pip = pip.set_position((pip_x, pip_y)).set_opacity(CONFIG["pip_opacity"])
 
-        pip_audio = pip.audio
         has_pip = True
         
 
@@ -172,10 +154,6 @@ def generate_video(
         layers.insert(1, pip)  # PIP between background and text
 
     main_video = CompositeVideoClip(layers, size=CONFIG["resolution"])
-
-    if has_pip and pip_audio:
-        main_video = main_video.set_audio(pip_audio)
-        print("🔊 Audio from PIP added")
 
     # ================= INTRO + TRANSITION =================
     print("🎬 Adding intro with fade transition...")
@@ -217,9 +195,9 @@ def generate_video(
         fps=CONFIG["fps"],
         codec="libx264",
         audio_codec="aac",
-        preset="medium",
-        threads=4,
-        bitrate="1500k",  # good balance; increase to 4000k for higher quality
+        preset="veryfast",
+        threads=8,
+        ffmpeg_params=["-crf", "28"],
         logger=logger,
 
     )
