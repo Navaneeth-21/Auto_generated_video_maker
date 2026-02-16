@@ -9,7 +9,6 @@ change_settings({
 })
 
 import os
-import numpy as np
 from moviepy.editor import (
     ImageClip,
     ColorClip,
@@ -23,8 +22,8 @@ from moviepy.video.fx.all import fadein, fadeout
 
 # ================= CONFIG =================
 CONFIG = {
-    "resolution": (1280, 720),  # change to 480p as (854, 480) for smaller file size
-    "fps": 20, 
+    "resolution": (854, 480),  # change to 480p as (854, 480) for smaller file size
+    "fps": 15, 
     "font_size": 40,
     "pip_size": (320, 180), # make it small and rectangular for better aesthetics
     "pip_opacity": 1.0,
@@ -60,40 +59,34 @@ def generate_video(
     text_width = CONFIG["resolution"][0] - (side_margin * 2)
 
     shadow_clip = TextClip(
-    text,
-    font="fonts/NotoSansTelugu-Bold.ttf",
-    fontsize=font_size,
-    color=shadow_color,
-    size=(text_width, None),
-    method="caption",
-    align="center",
+        text,
+        font="fonts/NotoSansTelugu-Bold.ttf",
+        fontsize=font_size,
+        color=shadow_color,
+        size=(text_width, None),
+        method="caption",
+        align="center",
     )
 
     main_clip = TextClip(
-    text,
-    font="fonts/NotoSansTelugu-Bold.ttf",
-    fontsize=font_size,
-    color=main_color,
-    size=(text_width, None),
-    method="caption",
-    align="center",
+        text,
+        font="fonts/NotoSansTelugu-Bold.ttf",
+        fontsize=font_size,
+        color=main_color,
+        size=(text_width, None),
+        method="caption",
+        align="center",
     )
 
-    shadow_offsets = [
-    (-2, -2), (2, -2),
-    (-2, 2),  (2, 2),
-    (-3, 0),  (3, 0),
-    (0, -3),  (0, 3)
-    ]
-
-    shadow_clips = [
-        shadow_clip.set_position((side_margin + dx, dy))
-        for dx, dy in shadow_offsets
-    ]
-
-    main_clip = main_clip.set_position((side_margin, 0))
-
-    text_clip = CompositeVideoClip(shadow_clips + [main_clip])
+    # In the original code, 8 clips were created for the shadow, which was inefficient.
+    # By creating a composite clip with just the main text and one shadow layer, performance is improved.
+    text_clip = CompositeVideoClip(
+        [
+            shadow_clip.set_position((2, 2)),
+            main_clip.set_position((0, 0)),
+        ],
+        size=(text_width, shadow_clip.h),
+    ).set_position((side_margin, 0))
 
     text_height = text_clip.h
     duration = (text_height + CONFIG["resolution"][1]) / scroll_speed
@@ -196,7 +189,6 @@ def generate_video(
         codec="libx264",
         audio_codec="aac",
         preset="veryfast",
-        threads=8,
         ffmpeg_params=["-crf", "28"],
         logger=logger,
 
