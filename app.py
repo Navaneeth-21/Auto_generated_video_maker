@@ -5,8 +5,9 @@ from video_generator import generate_video
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = "uploads"
-OUTPUT_FOLDER = "output"
+UPLOAD_FOLDER = "/tmp/uploads"
+OUTPUT_FOLDER = "/tmp/output"
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
@@ -17,8 +18,8 @@ progress_status = {
 
 def update_progress(value):
     progress_status["percent"] = value
-
 # ---------------------------------------------------
+
 
 @app.route("/")
 def index():
@@ -36,35 +37,33 @@ def generate():
     scroll_speed = int(request.form["scroll_speed"])
     font_size = int(request.form["font_size"])
     main_color = request.form["main_color"]
-    shadow_color = request.form["shadow_color"]
 
-
-    # Uploaded files
+    # ---------------- UPDATED FILE INPUTS ----------------
     background_file = request.files["background"]
-    pip_file = request.files["pip"]
-    intro_file = request.files["intro"] 
+    intro1_file = request.files["intro1"]
+    intro2_file = request.files["intro2"]
 
     bg_path = os.path.join(UPLOAD_FOLDER, background_file.filename)
-    pip_path = os.path.join(UPLOAD_FOLDER, pip_file.filename)
-    intro_path = os.path.join(UPLOAD_FOLDER, intro_file.filename)
+    intro1_path = os.path.join(UPLOAD_FOLDER, intro1_file.filename)
+    intro2_path = os.path.join(UPLOAD_FOLDER, intro2_file.filename)
 
     background_file.save(bg_path)
-    pip_file.save(pip_path)
-    intro_file.save(intro_path)
+    intro1_file.save(intro1_path)
+    intro2_file.save(intro2_path)
+    # ------------------------------------------------------
 
-    output_filename = f"final_{os.urandom(4).hex()}.mp4" 
+    output_filename = f"final_{os.urandom(4).hex()}.mp4"
     output_path = os.path.join(OUTPUT_FOLDER, output_filename)
 
-    # Call generator with log function
+    # Call generator
     generate_video(
         text=text,
         background_path=bg_path,
-        pip_path=pip_path,
-        intro_path=intro_path,
+        intro1_path=intro1_path,
+        intro2_path=intro2_path,
         scroll_speed=scroll_speed,
         font_size=font_size,
         main_color=main_color,
-        shadow_color=shadow_color,
         progress_func=update_progress,
         output_path=output_path
     )
@@ -75,17 +74,19 @@ def generate():
     return jsonify({"status": "done", "file": output_filename})
 
 
-
-# -------- NEW PROGRESS ENDPOINT --------
+# -------- PROGRESS ENDPOINT --------
 @app.route("/progress")
 def progress():
     return jsonify(progress_status)
-# ---------------------------------------
+# -----------------------------------
 
 
 @app.route("/download/<filename>")
 def download(filename):
     return send_from_directory(OUTPUT_FOLDER, filename, as_attachment=True)
 
+
+port = int(os.environ.get("PORT", 5000))
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000)
