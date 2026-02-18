@@ -40,16 +40,8 @@ def generate():
 
     # ---------------- UPDATED FILE INPUTS ----------------
     background_file = request.files["background"]
-    intro1_file = request.files["intro1"]
-    intro2_file = request.files["intro2"]
-
     bg_path = os.path.join(UPLOAD_FOLDER, background_file.filename)
-    intro1_path = os.path.join(UPLOAD_FOLDER, intro1_file.filename)
-    intro2_path = os.path.join(UPLOAD_FOLDER, intro2_file.filename)
-
     background_file.save(bg_path)
-    intro1_file.save(intro1_path)
-    intro2_file.save(intro2_path)
     # ------------------------------------------------------
 
     output_filename = f"final_{os.urandom(4).hex()}.mp4"
@@ -59,8 +51,6 @@ def generate():
     generate_video(
         text=text,
         background_path=bg_path,
-        intro1_path=intro1_path,
-        intro2_path=intro2_path,
         scroll_speed=scroll_speed,
         font_size=font_size,
         main_color=main_color,
