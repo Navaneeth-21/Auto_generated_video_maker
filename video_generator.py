@@ -14,18 +14,13 @@ from moviepy.editor import (
     ImageClip,
     ColorClip,
     TextClip,
-    VideoFileClip,
     CompositeVideoClip,
-    concatenate_videoclips,
 )
-
-from moviepy.video.fx.all import fadein, fadeout
 
 # ================= CONFIG =================
 CONFIG = {
     "resolution": (854, 480),  # 480p
-    "fps": 24, 
-    "font_size": 40,
+    "fps": 20, 
     "font_path": r"D:\video_maker\fonts\NotoSansTelugu-Bold.ttf"
 }
 
@@ -33,8 +28,6 @@ CONFIG = {
 def generate_video(
     text,
     background_path,
-    intro1_path,
-    intro2_path,
     scroll_speed=50,
     font_size=40,
     main_color="black",
@@ -56,14 +49,12 @@ def generate_video(
 
     # OPTIMIZATION: Reuse text rendering
     # print("⚡ Using efficient shadow compositing...")
-    
+    # ---------- MAIN TEXT ----------
     text_clip = TextClip(
         text,
-        font="fonts/NotoSansTelugu-Bold.ttf",
+        font= "fonts/NotoSansTelugu-Bold.ttf",
         fontsize=font_size,
         color=main_color,
-        stroke_color="white",
-        stroke_width=2,
         size=(text_width, None),
         method="caption",
         align="center",
@@ -105,63 +96,13 @@ def generate_video(
     # ================= MAIN VIDEO =================
     print("🎨 Compositing main video...")
 
-    main_video = CompositeVideoClip(
+    final_video = CompositeVideoClip(
         [background, text_clip],
         size=CONFIG["resolution"]
     )
 
-    # ================= INTRO + INTRO2 + MAIN =================
-    print("🎬 Adding intro sequence...")
 
-    transition = 1.0
-    clips_to_merge = []
-
-    try:
-
-        # ---------- INTRO 1 ----------
-        if intro1_path and os.path.exists(intro1_path):
-            intro1 = VideoFileClip(intro1_path, audio=False)
-
-            if intro1.size != CONFIG["resolution"]:
-                intro1 = intro1.resize(CONFIG["resolution"])
-
-            print(f"✅ Intro 1: {intro1.duration:.1f}s")
-
-            # Light fade only on intro1
-            intro1 = fadeout(intro1, transition)
-
-            clips_to_merge.append(intro1)
-            print(f"✅ Intro 1 added ({intro1.duration:.1f}s)")
-
-
-        # ---------- INTRO 2 (OLD PIP AS FULL VIDEO) ----------
-        if intro2_path and os.path.exists(intro2_path):
-            intro2 = VideoFileClip(intro2_path, audio=False)
-
-            if intro2.size != CONFIG["resolution"]:
-                intro2 = intro2.resize(CONFIG["resolution"])
-
-            clips_to_merge.append(intro2)
-            print(f"✅ Intro 2: {intro2.duration:.1f}s")
-
-
-        # ---------- MAIN VIDEO ----------
-        clips_to_merge.append(main_video)
-
-        final_video = concatenate_videoclips(
-            clips_to_merge,
-            method="compose",
-            padding=-transition if len(clips_to_merge) > 1 else 0,
-        )
-
-        print("✅ Intro sequence added")
-
-    except Exception as e:
-        print(f"⚠ Intro sequence skipped: {str(e)}")
-        final_video = main_video
-
-    # ================= OPTIMIZED EXPORT =================
-    
+    # ----------------- PROGRESS LOGGER ----------------
     class MyBarLogger(ProgressBarLogger):
         def bars_callback(self, bar, attr, value, old_value=None):
             if progress_func and bar == 't':
@@ -172,22 +113,21 @@ def generate_video(
 
     logger = MyBarLogger()
 
+
+    # ================= OPTIMIZED EXPORT =================
     print("💾 Exporting with optimized settings...")
     
     final_video.write_videofile(
         output_path,
         fps=CONFIG["fps"],
         codec="libx264",
-        audio_codec="aac",
+        audio=False,
         preset="ultrafast",  # 20-30% faster than veryfast
         ffmpeg_params=[
             "-crf", "26",
             "-movflags", "+faststart",
         ],
         logger=logger,
-        temp_audiofile="temp-audio.m4a",
-        remove_temp=True,
-        write_logfile=False,  # Skip log writing = faster
     )
 
     print("\n" + "="*50)
