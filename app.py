@@ -2,6 +2,9 @@
 import os
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from video_generator import generate_video
+import webbrowser
+import threading
+
 
 app = Flask(__name__)
 
@@ -78,5 +81,13 @@ def download(filename):
 
 port = int(os.environ.get("PORT", 5000))
 
+def open_browser():
+    webbrowser.open("http://127.0.0.1:5000")
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    # open browser automatically after 2 seconds
+    threading.Timer(2, open_browser).start()
+
+    # run without debug and without auto reload
+    app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)
+
