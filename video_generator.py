@@ -3,11 +3,11 @@
 from proglog import ProgressBarLogger
 
 import re
-# from moviepy.config import change_settings
+from moviepy.config import change_settings
 
-# change_settings({
-#     "IMAGEMAGICK_BINARY": r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"
-# })
+change_settings({
+    "IMAGEMAGICK_BINARY": r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"
+})
 
 import os
 from moviepy.editor import (
