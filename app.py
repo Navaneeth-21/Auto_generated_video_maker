@@ -9,6 +9,7 @@ import threading
 app = Flask(__name__)
 
 UPLOAD_FOLDER = "/tmp/uploads"
+
 OUTPUT_FOLDER = "/tmp/output"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -89,5 +90,5 @@ if __name__ == "__main__":
     threading.Timer(2, open_browser).start()
 
     # run without debug and without auto reload
-    app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)
+    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
 
