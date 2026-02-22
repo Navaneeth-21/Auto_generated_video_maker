@@ -8,9 +8,9 @@ import threading
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = "/tmp/uploads"
+UPLOAD_FOLDER = "uploads"
 
-OUTPUT_FOLDER = "/tmp/output"
+OUTPUT_FOLDER = "output"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
