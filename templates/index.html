@@ -10,7 +10,8 @@
 <div class="container">
     <h1>🎬 Telugu Video Generator</h1>
 
-    <form id="videoForm" class="card" enctype="multipart/form-data">
+    <!-- IMPORTANT: added action + method -->
+    <form id="videoForm" class="card" action="/generate" method="POST" enctype="multipart/form-data">
         
         <div class="form-group full">
             <label>Enter Text</label>
@@ -36,10 +37,9 @@
             </div>
         </div>
 
-        <!-- UPDATED SECTION -->
         <div class="form-group full">
-                <label>Background Image</label>
-                <input type="file" name="background" required>
+            <label>Background Image</label>
+            <input type="file" name="background" required>
         </div>
 
         <button type="submit" class="btn-primary">
@@ -47,8 +47,10 @@
         </button>
     </form>
 
+    <!-- Loader -->
     <div id="loader" class="loader" style="display:none;"></div>
 
+    <!-- Progress -->
     <div id="progress-container">
         <div id="progress-bar">
             <div id="progress-fill">
@@ -57,9 +59,9 @@
         </div>
     </div>
 
-    <div id="download" class="download-box"></div>
 </div>
 
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
 </body>
 </html>
