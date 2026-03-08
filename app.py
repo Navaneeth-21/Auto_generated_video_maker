@@ -1,15 +1,13 @@
 # app.py
 import os
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_file
 from video_generator import generate_video
 import webbrowser
 import threading
 
-
 app = Flask(__name__)
 
 UPLOAD_FOLDER = "uploads"
-
 OUTPUT_FOLDER = "output"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -42,16 +40,15 @@ def generate():
     font_size = int(request.form["font_size"])
     main_color = request.form["main_color"]
 
-    # ---------------- UPDATED FILE INPUTS ----------------
+    # Save background image
     background_file = request.files["background"]
     bg_path = os.path.join(UPLOAD_FOLDER, background_file.filename)
     background_file.save(bg_path)
-    # ------------------------------------------------------
 
     output_filename = f"final_{os.urandom(4).hex()}.mp4"
     output_path = os.path.join(OUTPUT_FOLDER, output_filename)
 
-    # Call generator
+    # Generate video
     generate_video(
         text=text,
         background_path=bg_path,
@@ -62,10 +59,16 @@ def generate():
         output_path=output_path
     )
 
-    # Ensure final state
+    # Ensure progress complete
     progress_status["percent"] = 100
 
-    return jsonify({"status": "done", "file": output_filename})
+    # 🔹 SEND VIDEO DIRECTLY (AUTO DOWNLOAD)
+    return send_file(
+        output_path,
+        as_attachment=True,
+        download_name="generated_video.mp4",
+        mimetype="video/mp4"
+    )
 
 
 # -------- PROGRESS ENDPOINT --------
@@ -73,11 +76,6 @@ def generate():
 def progress():
     return jsonify(progress_status)
 # -----------------------------------
-
-
-@app.route("/download/<filename>")
-def download(filename):
-    return send_from_directory(OUTPUT_FOLDER, filename, as_attachment=True)
 
 
 port = int(os.environ.get("PORT", 5000))
@@ -89,6 +87,4 @@ if __name__ == "__main__":
     # open browser automatically after 2 seconds
     threading.Timer(2, open_browser).start()
 
-    # run without debug and without auto reload
     app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
-
