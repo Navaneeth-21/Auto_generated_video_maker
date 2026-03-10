@@ -3,9 +3,11 @@ import os
 import time
 import threading
 import queue
+import webbrowser
 from flask import Flask, render_template, request, jsonify, send_file
 from video_generator import generate_video
 from werkzeug.utils import secure_filename
+
 
 app = Flask(__name__)
 
@@ -151,6 +153,13 @@ def progress():
 
 port = int(os.environ.get("PORT", 5000))
 
+def open_browser():
+    webbrowser.open(f"http://localhost:{port}")
+
+
 if __name__ == "__main__":
+
+    threading.Timer(2, open_browser).start()
+
     app.run(host="0.0.0.0", port=5000, debug=False)
 
