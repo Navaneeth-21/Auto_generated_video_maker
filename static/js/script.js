@@ -64,7 +64,7 @@ function pollProgress() {
                         window.location.href = "/download/" + generatedFile;
                     }
 
-                }, 1500);
+                }, 4000);
 
                 return;
             }
