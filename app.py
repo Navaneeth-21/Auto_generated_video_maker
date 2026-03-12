@@ -63,6 +63,7 @@ def worker():
 
         os.remove(background_path)
 
+        time.sleep(1)
         progress_status["percent"] = 100
 
         clean_old_videos(OUTPUT_FOLDER)  
@@ -76,17 +77,23 @@ threading.Thread(target=worker, daemon=True).start()
 # -------- CLEAN OLD VIDEOS --------
 def clean_old_videos(folder, max_files=10):
 
-    files = sorted(
-        [os.path.join(folder, f) for f in os.listdir(folder)],
-        key=os.path.getmtime
-    )
+    files = [
+        os.path.join(folder, f)
+        for f in os.listdir(folder)
+        if f.endswith(".mp4")
+    ]
+
+    files.sort(key=os.path.getmtime)
 
     while len(files) > max_files:
+
+        oldest = files.pop(0)
+
         try:
-            os.remove(files[0])
-        except:
-            pass
-        files.pop(0)
+            os.remove(oldest)
+            print(f"🗑 Deleted old video: {oldest}")
+        except Exception as e:
+            print(f"❌ Could not delete {oldest}: {e}")
 # ----------------------------------
 
 
@@ -136,7 +143,11 @@ def generate():
 
 @app.route("/download/<filename>")
 def download(filename):
+
     path = os.path.join(OUTPUT_FOLDER, filename)
+
+    if not os.path.exists(path):
+        return jsonify({"error": "File not ready yet"}), 404
 
     return send_file(
         path,
