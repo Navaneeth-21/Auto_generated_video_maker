@@ -1,16 +1,20 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html>
 <head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Video Generator</title>
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
 </head>
 <body>
 
 <div class="container">
     <h1>🎬 Telugu Video Generator</h1>
 
-    <!-- IMPORTANT: added action + method -->
     <form id="videoForm" class="card" action="/generate" method="POST" enctype="multipart/form-data">
         
         <div class="form-group full">
@@ -39,7 +43,7 @@
 
         <div class="form-group full">
             <label>Background Image</label>
-            <input type="file" name="background" required>
+            <input type="file" name="background" accept="image/png,image/jpeg,image/webp" required>
         </div>
 
         <button type="submit" class="btn-primary">
@@ -47,10 +51,8 @@
         </button>
     </form>
 
-    <!-- Loader -->
     <div id="loader" class="loader" style="display:none;"></div>
 
-    <!-- Progress -->
     <div id="progress-container">
         <div id="progress-bar">
             <div id="progress-fill">
