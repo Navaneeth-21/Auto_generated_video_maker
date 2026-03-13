@@ -12,9 +12,14 @@ from moviepy.editor import (
 )
 
 # ================= IMAGEMAGICK =================
-change_settings({
-    "IMAGEMAGICK_BINARY": r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"
-})
+if os.name == "nt":  # Windows
+    change_settings({
+        "IMAGEMAGICK_BINARY": r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"
+    })
+else:  # Linux / AWS
+    change_settings({
+        "IMAGEMAGICK_BINARY": "magick"
+    })
 
 # ================= CONFIG =================
 CONFIG = {
