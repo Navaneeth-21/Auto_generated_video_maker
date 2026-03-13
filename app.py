@@ -144,7 +144,7 @@ def download(filename):
     
     def delayed_delete(file_path):
 
-        max_wait = 100 * 60 # 100 minutes
+        max_wait = 60 * 60 # 1 hour
         waited = 0
 
         while waited < max_wait:
