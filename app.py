@@ -1,13 +1,10 @@
-# app.py
 import os
 import time
 import threading
 import queue
-import webbrowser
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, abort
 from video_generator import generate_video
 from werkzeug.utils import secure_filename
-
 
 app = Flask(__name__)
 
@@ -27,10 +24,10 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 # -------- PROGRESS TRACKING --------
-progress_status = {"percent": 0}
+progress_status = {}
 
-def update_progress(value):
-    progress_status["percent"] = value
+def update_progress(job_id, value):
+    progress_status[job_id] = value
 # -----------------------------------
 
 
@@ -39,62 +36,45 @@ video_queue = queue.Queue()
 
 def worker():
     while True:
-        job = video_queue.get()
-
-        if job is None:
-            break
-
-        text = job["text"]
-        background_path = job["background_path"]
-        scroll_speed = job["scroll_speed"]
-        font_size = job["font_size"]
-        main_color = job["main_color"]
-        output_path = job["output_path"]
-
-        generate_video(
-            text=text,
-            background_path=background_path,
-            scroll_speed=scroll_speed,
-            font_size=font_size,
-            main_color=main_color,
-            progress_func=update_progress,
-            output_path=output_path
-        )
-
-        os.remove(background_path)
-
-        time.sleep(1)
-        progress_status["percent"] = 100
-
-        clean_old_videos(OUTPUT_FOLDER)  
-
-        video_queue.task_done()
-
-threading.Thread(target=worker, daemon=True).start()
-# -----------------------------------
-
-
-# -------- CLEAN OLD VIDEOS --------
-def clean_old_videos(folder, max_files=10):
-
-    files = [
-        os.path.join(folder, f)
-        for f in os.listdir(folder)
-        if f.endswith(".mp4")
-    ]
-
-    files.sort(key=os.path.getmtime)
-
-    while len(files) > max_files:
-
-        oldest = files.pop(0)
-
         try:
-            os.remove(oldest)
-            print(f"🗑 Deleted old video: {oldest}")
+            job = video_queue.get()
+
+            if job is None:
+                continue
+            
+            job_id = job["job_id"]
+            text = job["text"]
+            background_path = job["background_path"]
+            scroll_speed = job["scroll_speed"]
+            font_size = job["font_size"]
+            main_color = job["main_color"]
+            output_path = job["output_path"]
+
+            generate_video(
+                text=text,
+                background_path=background_path,
+                scroll_speed=scroll_speed,
+                font_size=font_size,
+                main_color=main_color,
+                progress_func=lambda v: update_progress(job_id, v),
+                output_path=output_path
+            )
+
+            # delete uploaded background
+            if os.path.exists(background_path):
+                os.remove(background_path)
+
+            progress_status["percent"] = 100
+
         except Exception as e:
-            print(f"❌ Could not delete {oldest}: {e}")
-# ----------------------------------
+            print("❌ Worker error:", e)
+
+        finally:
+            video_queue.task_done()
+
+for _ in range(2):
+    threading.Thread(target=worker, daemon=True).start()
+# -----------------------------------
 
 
 
@@ -105,6 +85,8 @@ def index():
 
 @app.route("/generate", methods=["POST"])
 def generate():
+
+    job_id = os.urandom(6).hex()
     progress_status["percent"] = 0
 
     text = request.form["text"]
@@ -118,16 +100,23 @@ def generate():
         return "No file selected", 400
 
     if not allowed_file(background_file.filename):
-        return "Only image files (jpg, jpeg, png, webp) are allowed.", 400
+        return "Only image files allowed.", 400
 
+    # SAFE RANDOM FILENAME
+    random_name = os.urandom(6).hex()
     filename = secure_filename(background_file.filename)
-    bg_path = os.path.join(UPLOAD_FOLDER, filename)
+    extension = filename.split(".")[-1]
+
+    bg_filename = f"bg_{random_name}.{extension}"
+    bg_path = os.path.join(UPLOAD_FOLDER, bg_filename)
+
     background_file.save(bg_path)
 
-    output_filename = f"final_{os.urandom(4).hex()}.mp4"
+    output_filename = f"{job_id}.mp4"
     output_path = os.path.join(OUTPUT_FOLDER, output_filename)
 
     job = {
+        "job_id": job_id,
         "text": text,
         "background_path": bg_path,
         "scroll_speed": scroll_speed,
@@ -138,39 +127,70 @@ def generate():
 
     video_queue.put(job)
 
-    return jsonify({"file": output_filename})
+    return jsonify({
+    "file": output_filename,
+    "job_id": job_id
+    })
 
 
 @app.route("/download/<filename>")
 def download(filename):
 
-    path = os.path.join(OUTPUT_FOLDER, filename)
+    safe_name = secure_filename(filename)
+    path = os.path.join(OUTPUT_FOLDER, safe_name)
 
     if not os.path.exists(path):
         return jsonify({"error": "File not ready yet"}), 404
+    
+    def delayed_delete(file_path):
 
-    return send_file(
+        max_wait = 100 * 60 # 100 minutes
+        waited = 0
+
+        while waited < max_wait:
+
+            # if file no longer exists stop
+            if not os.path.exists(file_path):
+                return
+
+            time.sleep(10)
+            waited += 10
+
+        try:
+            os.remove(file_path)
+            print(f"🗑 Deleted video: {file_path}")
+        except Exception as e:
+            print("Delete failed:", e)
+
+    threading.Thread(target=delayed_delete, args=(path,), daemon=True).start()
+        
+
+    response = send_file(
         path,
         as_attachment=True,
         download_name="generated_video.mp4",
         mimetype="video/mp4"
     )
 
+    @response.call_on_close
+    def delete_file():
+        print("DELETE FUNCTION CALLED")
+        try:
+            os.remove(path)
+            print(f"🗑 Deleted video after download: {path}")
+        except Exception as e:
+            print(f"Delete failed: {e}")
 
-@app.route("/progress")
-def progress():
-    return jsonify(progress_status)
+    return response
+
+@app.route("/progress/<job_id>")
+def progress(job_id):
+    percent = progress_status.get(job_id, 0)
+    return jsonify({"percent": percent})
 
 
 port = int(os.environ.get("PORT", 5000))
 
-def open_browser():
-    webbrowser.open(f"http://localhost:{port}")
-
 
 if __name__ == "__main__":
-
-    threading.Timer(2, open_browser).start()
-
-    app.run(host="0.0.0.0", port=5000, debug=False)
-
+    app.run(host="0.0.0.0", port=port, debug=False)
