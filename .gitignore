@@ -10,8 +10,8 @@ venv/
 env/
 
 # Uploads & Generated Files
-uploads/
-output/
+uploads/*
+output/*
 *.mp4
 *.png
 
