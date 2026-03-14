@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import threading
 import queue
@@ -9,9 +10,9 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 
 # -------- SECURITY SETTINGS --------
-app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024 # 10 MB limit for uploads
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB limit for uploads
 
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"} # only allow common image formats for background
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -105,6 +106,10 @@ def worker():
 
             update_progress(job_id, 100)
 
+            # CHANGE 1: Clean up progress_status after 5 minutes so the dict
+            # doesn't grow forever and leak memory on a long-running AWS server.
+            threading.Timer(300, lambda jid=job_id: progress_status.pop(jid, None)).start()
+
         except Exception as e:
             print(f"Worker error: {e}")
 
@@ -127,14 +132,30 @@ def generate():
     job_id = os.urandom(6).hex()
     update_progress(job_id, 0)
 
-    text = request.form["text"]
-    scroll_speed = int(request.form["scroll_speed"])
-    font_size = int(request.form["font_size"])
-    main_color = request.form["main_color"]
+    # CHANGE 2: Cap text length to prevent a huge payload from freezing
+    # the worker for hours on a small AWS instance.
+    text = request.form.get("text", "")[:50000]
+    if not text.strip():
+        return "Text is required", 400
 
-    background_file = request.files["background"]
+    # CHANGE 3: Clamp scroll_speed and font_size to safe ranges so a
+    # crafted request can't pass extreme values to ffmpeg / ImageMagick.
+    try:
+        scroll_speed = max(10, min(300, int(request.form["scroll_speed"])))
+        font_size    = max(10, min(120, int(request.form["font_size"])))
+    except (ValueError, KeyError):
+        return "Invalid scroll_speed or font_size", 400
 
-    if background_file.filename == "":
+    # CHANGE 4: Validate main_color — only allow #RRGGBB hex or plain colour
+    # names (e.g. "black", "white"). Rejects anything that could be used as
+    # an injection payload against ImageMagick.
+    main_color = request.form.get("main_color", "#000000").strip()
+    if not re.match(r'^#[0-9a-fA-F]{6}$|^[a-zA-Z]+$', main_color):
+        return "Invalid color value", 400
+
+    background_file = request.files.get("background")
+
+    if not background_file or background_file.filename == "":
         return "No file selected", 400
 
     if not allowed_file(background_file.filename):
