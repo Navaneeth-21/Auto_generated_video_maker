@@ -128,6 +128,7 @@ def index():
 
 @app.route("/generate", methods=["POST"])
 def generate():
+    print("Received generation request")
 
     job_id = os.urandom(6).hex()
     update_progress(job_id, 0)
