@@ -31,7 +31,7 @@ def update_progress(job_id, value):
 # -----------------------------------
 
 # -------- FILE CLEANUP --------
-VIDEO_MAX_AGE_SECONDS = 60 * 60  # delete output videos older than 1 hour
+VIDEO_MAX_AGE_SECONDS = 60 * 30  # delete output videos older than 30 min
 CLEANUP_INTERVAL = 60            # scan every 60 seconds
 
 def safe_remove(path):
