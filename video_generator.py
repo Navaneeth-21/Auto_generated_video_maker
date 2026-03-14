@@ -16,16 +16,24 @@ if os.name == "nt":  # Windows
     change_settings({
         "IMAGEMAGICK_BINARY": r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"
     })
-else:  # Linux / AWS
-    change_settings({
-        "IMAGEMAGICK_BINARY": "magick"
-    })
+else:
+    # CHANGE 5: On Linux/AWS, try "magick" first (ImageMagick 7) and fall back
+    # to "convert" (ImageMagick 6, which ships on older Ubuntu AMIs via apt).
+    # Without this fallback the app crashes silently at TextClip on some EC2 AMIs.
+    import shutil
+    _magick = "magick" if shutil.which("magick") else "convert"
+    change_settings({"IMAGEMAGICK_BINARY": _magick})
 
 # ================= CONFIG =================
+# CHANGE 6: Build font_path relative to this file's directory instead of
+# using a bare relative path. A bare "fonts/..." path breaks when Gunicorn
+# is started from a directory other than the project root on AWS.
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 CONFIG = {
     "resolution": (854, 480),  # 480p
     "fps": 20,
-    "font_path": "fonts/NotoSansTelugu-Bold.ttf"
+    "font_path": os.path.join(_BASE_DIR, "fonts", "NotoSansTelugu-Bold.ttf")
 }
 
 
@@ -44,12 +52,21 @@ def generate_video(
             progress_func(val)
 
     # ================= TEXT CLEAN =================
-    print("🖋️ Creating text clip with optimized rendering...")
+    print("Creating text clip...")
 
     text = re.sub(r'\s+', ' ', text).strip()
 
     side_margin = 5
     text_width = CONFIG["resolution"][0] - (side_margin * 2)
+
+    # CHANGE 7: Verify the font file actually exists before passing it to
+    # ImageMagick. On AWS a missing font causes a cryptic ImageMagick error;
+    # this gives a clear message and stops early instead.
+    if not os.path.exists(CONFIG["font_path"]):
+        raise FileNotFoundError(
+            f"Font not found: {CONFIG['font_path']}. "
+            "Make sure the fonts/ folder is uploaded alongside the app."
+        )
 
     # ================= TEXT CLIP =================
     text_clip = TextClip(
@@ -68,7 +85,7 @@ def generate_video(
 
     text_clip = text_clip.set_duration(duration)
 
-    # Scroll bottom → top
+    # Scroll bottom to top
     text_clip = text_clip.set_position(
         lambda t: (
             "center",
@@ -76,7 +93,7 @@ def generate_video(
         )
     )
 
-    print(f"✅ Text clip ready: {duration:.1f}s")
+    print(f"Text clip ready: {duration:.1f}s")
 
     # ================= BACKGROUND =================
     try:
@@ -87,14 +104,14 @@ def generate_video(
 
         background = background.set_duration(duration)
 
-        print("✅ Background loaded")
+        print("Background loaded")
 
     except Exception:
-        print("⚠ Background failed → black background")
+        print("Background failed, using black background")
         background = ColorClip(CONFIG["resolution"], color=(0, 0, 0)).set_duration(duration)
 
     # ================= COMPOSITE =================
-    print("🎨 Compositing main video...")
+    print("Compositing video...")
 
     final_video = CompositeVideoClip(
         [background, text_clip],
@@ -116,14 +133,17 @@ def generate_video(
     logger = MyBarLogger()
 
     # ================= EXPORT =================
-    print("💾 Exporting with optimized settings...")
+    print("Exporting video...")
 
+    # CHANGE 8: Reduced threads from 4 to 2. On a t3.medium (2 vCPU) using 4
+    # ffmpeg threads causes context switching overhead and can make the instance
+    # unresponsive. 2 threads matches the vCPU count and is the safe default.
     final_video.write_videofile(
         output_path,
         fps=CONFIG["fps"],
         codec="libx264",
         audio=False,
-        threads=4,
+        threads=2, # for 2 vCPU machines; adjust if you know your server has more cores
         preset="ultrafast",
         ffmpeg_params=[
             "-crf", "26",
@@ -132,11 +152,11 @@ def generate_video(
         logger=logger,
     )
 
-    print("\n" + "="*50)
-    print("✅ VIDEO COMPLETE!")
-    print(f"📁 {output_path}")
-    print(f"⏱️  {duration:.1f}s")
-    print("="*50)
+    print("=" * 50)
+    print("VIDEO COMPLETE!")
+    print(f"File: {output_path}")
+    print(f"Duration: {duration:.1f}s")
+    print("=" * 50)
 
     if progress_func:
         progress_func(100)
