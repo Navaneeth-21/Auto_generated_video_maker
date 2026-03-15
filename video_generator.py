@@ -64,7 +64,7 @@ def generate_video(
         fontsize=font_size,
         color=main_color,
         size=(text_width, None),
-        method="caption",
+        method="pango",
         align="center",
         interline=-5
     )
