@@ -68,7 +68,7 @@ def cleanup_old_videos():
 
         time.sleep(CLEANUP_INTERVAL)
 
-threading.Thread(target=cleanup_old_videos, daemon=True).start()
+threading.Thread(target=cleanup_old_videos).start()
 # ------------------------------
 
 
@@ -117,7 +117,7 @@ def worker():
             video_queue.task_done()
 
 for _ in range(2):
-    threading.Thread(target=worker, daemon=True).start()
+    threading.Thread(target=worker).start()
 # -----------------------------------
 
 
