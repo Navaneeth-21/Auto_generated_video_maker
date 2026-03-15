@@ -4,7 +4,7 @@ import re
 import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-from moviepy.editor import ImageClip, ColorClip, CompositeVideoClip, VideoClip
+from moviepy.editor import ImageClip, ColorClip, CompositeVideoClip
 from moviepy.config import change_settings
 
 # ================= IMAGEMAGICK =================
@@ -31,17 +31,16 @@ CONFIG = {
 
 def make_text_image(text, font_path, font_size, color, width):
     """
-    Render text using Pillow directly — gives correct Telugu glyph shaping
-    unlike ImageMagick caption method.
+    Render text using Pillow directly — correct Telugu glyph shaping.
+    Returns a PIL Image in RGBA mode.
     """
     font = ImageFont.truetype(font_path, font_size)
 
-    # Word wrap manually to fit within width
+    # Word wrap to fit within width
     words = text.split()
     lines = []
     current_line = ""
 
-    # Use a temp image to measure text
     temp_img = Image.new("RGBA", (width, 100))
     temp_draw = ImageDraw.Draw(temp_img)
 
@@ -49,14 +48,12 @@ def make_text_image(text, font_path, font_size, color, width):
         test_line = current_line + (" " if current_line else "") + word
         bbox = temp_draw.textbbox((0, 0), test_line, font=font)
         line_width = bbox[2] - bbox[0]
-
         if line_width <= width:
             current_line = test_line
         else:
             if current_line:
                 lines.append(current_line)
             current_line = word
-
     if current_line:
         lines.append(current_line)
 
@@ -64,11 +61,11 @@ def make_text_image(text, font_path, font_size, color, width):
     line_height = font_size + 10
     total_height = line_height * len(lines) + 20
 
-    # Draw text on transparent image
+    # Draw on transparent background
     img = Image.new("RGBA", (width, total_height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    # Parse color — support #RRGGBB and named colors
+    # Parse color
     try:
         if color.startswith("#"):
             r = int(color[1:3], 16)
@@ -76,7 +73,6 @@ def make_text_image(text, font_path, font_size, color, width):
             b = int(color[5:7], 16)
             fill_color = (r, g, b, 255)
         else:
-            # Named color — use Pillow's color parsing
             temp = Image.new("RGB", (1, 1), color)
             r, g, b = temp.getpixel((0, 0))
             fill_color = (r, g, b, 255)
@@ -87,11 +83,11 @@ def make_text_image(text, font_path, font_size, color, width):
     for line in lines:
         bbox = draw.textbbox((0, 0), line, font=font)
         line_w = bbox[2] - bbox[0]
-        x = (width - line_w) // 2  # center align
+        x = (width - line_w) // 2
         draw.text((x, y), line, font=font, fill=fill_color)
         y += line_height
 
-    return np.array(img)
+    return img
 
 
 def generate_video(
@@ -109,48 +105,22 @@ def generate_video(
     print("🖋️ Creating text clip with Pillow rendering...")
     text = re.sub(r'\s+', ' ', text).strip()
 
-    # Render text to numpy array using Pillow
     side_margin = 10
     text_width = W - (side_margin * 2)
-    text_array = make_text_image(text, CONFIG["font_path"], font_size, main_color, text_width)
+
+    # Render text to PIL image then convert to numpy RGBA array
+    pil_text = make_text_image(text, CONFIG["font_path"], font_size, main_color, text_width)
+    text_array = np.array(pil_text)  # shape: (text_height, text_width, 4) RGBA
 
     text_height = text_array.shape[0]
     duration = (text_height + H) / scroll_speed
 
-    # Create scrolling text clip from numpy array
-    def make_frame(t):
-        # Current vertical offset of text (starts below screen, scrolls up)
-        y_offset = int(H - scroll_speed * t)
-
-        # Create blank RGBA frame
-        frame = np.zeros((H, W, 3), dtype=np.uint8)
-
-        # Calculate which portion of text_array is visible
-        text_start = -y_offset  # first row of text_array to show
-        text_end = text_start + H  # last row
-
-        # Clamp to valid range
-        src_start = max(0, text_start)
-        src_end = min(text_height, text_end)
-        dst_start = max(0, y_offset)
-        dst_end = dst_start + (src_end - src_start)
-
-        if src_start < src_end and dst_start < H:
-            dst_end = min(dst_end, H)
-            rows = dst_end - dst_start
-            src_end = src_start + rows
-
-            text_slice = text_array[src_start:src_end]  # RGBA
-            alpha = text_slice[:, :, 3:4] / 255.0
-            rgb = text_slice[:, :, :3]
-
-            frame[dst_start:dst_end, side_margin:side_margin+text_width] = (
-                rgb * alpha + frame[dst_start:dst_end, side_margin:side_margin+text_width] * (1 - alpha)
-            ).astype(np.uint8)
-
-        return frame
-
-    text_clip = VideoClip(make_frame, duration=duration)
+    # Create MoviePy ImageClip from RGBA numpy array (supports transparency)
+    text_clip = (
+        ImageClip(text_array, ismask=False)
+        .set_duration(duration)
+        .set_position(lambda t: (side_margin, H - int(scroll_speed * t)))
+    )
 
     print(f"✅ Text clip ready: {duration:.1f}s")
 
@@ -167,7 +137,10 @@ def generate_video(
 
     # ================= COMPOSITE =================
     print("🎨 Compositing main video...")
-    final_video = CompositeVideoClip([background, text_clip], size=CONFIG["resolution"])
+    final_video = CompositeVideoClip(
+        [background, text_clip],
+        size=CONFIG["resolution"]
+    )
 
     # ================= PROGRESS LOGGER =================
     class MyBarLogger(ProgressBarLogger):
