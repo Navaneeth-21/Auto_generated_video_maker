@@ -92,11 +92,10 @@ def generate_video(
             background = background.resize(CONFIG["resolution"])
 
         background = background.set_duration(duration)
-
         print("✅ Background loaded")
 
-    except Exception:
-        print("⚠ Background failed → black background")
+    except Exception as e:
+        print(f"⚠ Background failed: {e} → black background")
         background = ColorClip(CONFIG["resolution"], color=(0, 0, 0)).set_duration(duration)
 
     # ================= COMPOSITE =================
