@@ -54,9 +54,6 @@ def generate_video(
 
     text = re.sub(r'\s+', ' ', text).strip()
 
-    # Escape special XML characters for pango method
-    text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
 
     side_margin = 5
     text_width = CONFIG["resolution"][0] - (side_margin * 2)
@@ -68,7 +65,7 @@ def generate_video(
         fontsize=font_size,
         color=main_color,
         size=(text_width, None),
-        method="pango",
+        method="caption",
         align="center",
         interline=-5
     )
