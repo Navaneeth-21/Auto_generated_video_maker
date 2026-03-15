@@ -21,6 +21,10 @@ else:
     # to "convert" (ImageMagick 6, which ships on older Ubuntu AMIs via apt).
     import shutil
     _magick = "magick" if shutil.which("magick") else "convert"
+    if not shutil.which("magick") and not shutil.which("convert"):
+        raise EnvironmentError(
+            "ImageMagick not found. Run: sudo apt install -y imagemagick"
+        )
     change_settings({"IMAGEMAGICK_BINARY": _magick})
 
 # ================= CONFIG =================
