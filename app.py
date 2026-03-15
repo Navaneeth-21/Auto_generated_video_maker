@@ -135,7 +135,7 @@ def generate():
 
     # CHANGE 2: Cap text length to prevent a huge payload from freezing
     # the worker for hours on a small AWS instance.
-    text = request.form.get("text", "")[:15000]
+    text = request.form.get("text", "")[:40000]
     if not text.strip():
         return "Text is required", 400
 
