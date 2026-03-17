@@ -1,69 +1,182 @@
 <!DOCTYPE html>
 <html>
 <head>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Video Generator</title>
-
+    <title>తెలుగు కథా వీడియో</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-
 </head>
 <body>
 
+<div class="noise"></div>
+
 <div class="container">
-    <h1>🎬 Telugu Video Generator</h1>
 
-    <form id="videoForm" class="card" action="/generate" method="POST" enctype="multipart/form-data">
-        
-        <div class="form-group full">
-            <label>Enter Text</label>
-            <textarea name="text" rows="15" required></textarea>
-        </div>
-
-        <div class="grid-2">
-            <div class="form-group">
-                <label>Scroll Speed</label>
-                <input type="number" name="scroll_speed" value="50">
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-logo">
+            <div class="logo-ring">
+                <span>A</span>
             </div>
-
-            <div class="form-group">
-                <label>Font Size</label>
-                <input type="number" name="font_size" value="40" min="20" max="120">
+            <div class="header-titles">
+                <h1 class="title-telugu">తెలుగు కథా వీడియో</h1>
+                <p class="title-en">Telugu Story Video Generator</p>
+                <p class="title-sub">TRANSFORM YOUR STORIES INTO CINEMATIC SCROLLING VIDEOS</p>
             </div>
         </div>
+        <div class="header-line"></div>
+    </header>
 
-        <div class="grid-2">
-            <div class="form-group">
-                <label>Main Text Color</label>
-                <input type="color" name="main_color" value="#000000">
+    <!-- FORM CARD -->
+    <form id="videoForm" enctype="multipart/form-data">
+
+        <!-- TEXT AREA -->
+        <div class="card section-text">
+            <div class="section-label">
+                <span class="label-icon">✍️</span>
+                <span class="label-en">STORY TEXT</span>
+                <span class="label-te">కథ వచనం</span>
+            </div>
+            <div class="textarea-wrap">
+                <textarea
+                    name="text"
+                    id="storyText"
+                    placeholder="ఇక్కడ మీ తెలుగు కథను అతికించండి...&#10;Paste your Telugu story here..."
+                    required
+                ></textarea>
+                <div class="char-counter" id="charCounter">
+                    <span id="charCount">0</span> / 50,000
+                </div>
+            </div>
+            <div class="char-warning" id="charWarning">
+                ⚠ Character limit exceeded! Please reduce your text to under 50,000 characters.
             </div>
         </div>
 
-        <div class="form-group full">
-            <label>Background Image</label>
-            <input type="file" name="background" accept="image/png,image/jpeg,image/webp" required>
+        <!-- SETTINGS ROW -->
+        <div class="settings-row">
+            <div class="card setting-card">
+                <div class="setting-header">
+                    <span class="setting-name">SCROLL SPEED</span>
+                    <span class="setting-value" id="scrollVal">50</span>
+                </div>
+                <input type="range" name="scroll_speed" id="scrollSpeed"
+                    min="10" max="300" value="50" class="slider">
+                <div class="slider-labels">
+                    <span>Slow</span>
+                    <span>Fast</span>
+                </div>
+            </div>
+
+            <div class="card setting-card">
+                <div class="setting-header">
+                    <span class="setting-name">FONT SIZE</span>
+                    <span class="setting-value" id="fontVal">40</span>
+                </div>
+                <input type="range" name="font_size" id="fontSize"
+                    min="20" max="120" value="40" class="slider">
+                <div class="slider-labels">
+                    <span>Small</span>
+                    <span>Large</span>
+                </div>
+            </div>
         </div>
 
-        <button type="submit" class="btn-primary">
-            Generate Video
+        <!-- COLOR + BACKGROUND ROW -->
+        <div class="settings-row">
+            <div class="card setting-card">
+                <div class="section-label">
+                    <span class="label-en">TEXT COLOR</span>
+                </div>
+                <div class="color-picker-wrap">
+                    <input type="color" name="main_color" id="colorPicker" value="#ffffff">
+                    <div class="color-presets">
+                        <button type="button" class="preset-dot active" style="background:#ffffff" data-color="#ffffff"></button>
+                        <button type="button" class="preset-dot" style="background:#f59e0b" data-color="#f59e0b"></button>
+                        <button type="button" class="preset-dot" style="background:#ef4444" data-color="#ef4444"></button>
+                        <button type="button" class="preset-dot" style="background:#06b6d4" data-color="#06b6d4"></button>
+                        <button type="button" class="preset-dot" style="background:#eab308" data-color="#eab308"></button>
+                        <button type="button" class="preset-dot" style="background:#f5f5dc" data-color="#f5f5dc"></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card setting-card bg-card">
+                <div class="section-label">
+                    <span class="label-en">BACKGROUND IMAGE</span>
+                    <span class="label-optional">OPTIONAL</span>
+                </div>
+                <label class="file-drop" id="fileDrop">
+                    <input type="file" name="background" id="bgFile"
+                        accept="image/png,image/jpeg,image/webp">
+                    <div class="file-drop-inner" id="fileDropInner">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <p>Drag & drop or <span class="browse-link">browse</span></p>
+                        <p class="file-hint">JPG, PNG up to 10MB</p>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- GENERATE BUTTON -->
+        <button type="submit" class="btn-generate" id="generateBtn">
+            <span class="btn-icon">▷</span>
+            <span class="btn-text">GENERATE VIDEO</span>
         </button>
+
     </form>
 
-    <div id="loader" class="loader" style="display:none;"></div>
-
-    <div id="progress-container">
-        <div id="progress-bar">
-            <div id="progress-fill">
-                <span id="progress-text">0%</span>
+    <!-- PROGRESS SECTION -->
+    <div id="progressSection" class="progress-section" style="display:none;">
+        <div class="progress-header">
+            <svg class="gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+            </svg>
+            <div class="progress-titles">
+                <p class="progress-title">Creating Your Video</p>
+                <p class="progress-subtitle">This may take several minutes for long stories</p>
             </div>
         </div>
+        <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-pct" id="progressPct">0%</div>
+    </div>
+
+    <!-- VIDEO READY SECTION -->
+    <div id="videoReady" class="video-ready-section" style="display:none;">
+        <div class="ready-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        </div>
+        <h2 class="ready-title">Video Ready!</h2>
+        <p class="ready-subtitle">Your Telugu story video has been generated</p>
+
+        <video id="videoPreview" class="video-preview" controls></video>
+
+        <a id="downloadBtn" class="btn-download" href="#" download="generated_video.mp4">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download MP4
+        </a>
+        <p class="delete-warning">⚠ Video will be deleted after 3 hours. Save it immediately.</p>
+
+        <button class="btn-new" id="newVideoBtn">
+            + Generate Another Video
+        </button>
     </div>
 
 </div>
 
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-
 </body>
 </html>
